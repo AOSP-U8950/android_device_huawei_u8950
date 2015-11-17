@@ -1,0 +1,119 @@
+From ea96d91faadf0ba6ada836e4f84f4d9dcbd9ba24 Mon Sep 17 00:00:00 2001
+From: ksrt12 <kazakov12stepan2012@live.ru>
+Date: Tue, 17 Nov 2015 15:35:28 +0600
+Subject: [PATCH] Cyanogen fix for deep sleep and latest play services
+
+---
+ core/res/res/values/config.xml                     |  8 +++++
+ core/res/res/values/symbols.xml                    |  4 +++
+ .../android/server/pm/PackageManagerService.java   | 41 ++++++++++++++++++++++
+ 3 files changed, 53 insertions(+)
+
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index 68df6f1..25fc7e0 100755
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -2026,6 +2026,14 @@
+     <!-- Use ERI text for network name on CDMA LTE -->
+     <bool name="config_LTE_eri_for_network_name">true</bool>
+ 
++    <!-- The list of components which should be automatically disabled. -->
++    <string-array name="config_disabledComponents" translatable="false">
++    </string-array>
++
++    <!-- The list of components which should be forced to be enabled. -->
++    <string-array name="config_forceEnabledComponents" translatable="false">
++    </string-array>
++
+     <!-- Whether to start in touch mode -->
+     <bool name="config_defaultInTouchMode">true</bool>
+ </resources>
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index 1055547..74f8bde 100755
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -2157,4 +2157,8 @@
+   <java-symbol type="bool" name="config_use_sim_language_file" />
+   <java-symbol type="bool" name="config_LTE_eri_for_network_name" />
+   <java-symbol type="bool" name="config_defaultInTouchMode" />
++
++  <!-- Package Manager -->
++  <java-symbol type="array" name="config_disabledComponents" />
++  <java-symbol type="array" name="config_forceEnabledComponents" />
+ </resources>
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 6498dcc..b95bcc5 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -488,6 +488,8 @@ public class PackageManagerService extends IPackageManager.Stub {
+ 
+     boolean mResolverReplaced = false;
+ 
++    ArrayList<ComponentName> mDisabledComponentsList;
++
+     // Set of pending broadcasts for aggregating enable/disable of components.
+     static class PendingPackageBroadcasts {
+         // for each user id, a map of <package name -> components within that package>
+@@ -1781,6 +1783,38 @@ public class PackageManagerService extends IPackageManager.Stub {
+                 mSettings.mFingerprint = Build.FINGERPRINT;
+             }
+ 
++            // Disable components marked for disabling at build-time
++            mDisabledComponentsList = new ArrayList<ComponentName>();
++            for (String name : mContext.getResources().getStringArray(
++                    com.android.internal.R.array.config_disabledComponents)) {
++                ComponentName cn = ComponentName.unflattenFromString(name);
++                mDisabledComponentsList.add(cn);
++                Slog.v(TAG, "Disabling " + name);
++                String className = cn.getClassName();
++                PackageSetting pkgSetting = mSettings.mPackages.get(cn.getPackageName());
++                if (pkgSetting == null || pkgSetting.pkg == null
++                        || !pkgSetting.pkg.hasComponentClassName(className)) {
++                    Slog.w(TAG, "Unable to disable " + name);
++                    continue;
++               }
++                pkgSetting.disableComponentLPw(className, UserHandle.USER_OWNER);
++            }
++
++            // Enable components marked for forced-enable at build-time
++            for (String name : mContext.getResources().getStringArray(
++                    com.android.internal.R.array.config_forceEnabledComponents)) {
++                ComponentName cn = ComponentName.unflattenFromString(name);
++                Slog.v(TAG, "Enabling " + name);
++                String className = cn.getClassName();
++                PackageSetting pkgSetting = mSettings.mPackages.get(cn.getPackageName());
++                if (pkgSetting == null || pkgSetting.pkg == null
++                        || !pkgSetting.pkg.hasComponentClassName(className)) {
++                    Slog.w(TAG, "Unable to enable " + name);
++                    continue;
++                }
++                pkgSetting.enableComponentLPw(className, UserHandle.USER_OWNER);
++            }
++
+             // All the changes are done during package scanning.
+             mSettings.updateInternalDatabaseVersion();
+ 
+@@ -12129,6 +12163,12 @@ public class PackageManagerService extends IPackageManager.Stub {
+     public void setComponentEnabledSetting(ComponentName componentName,
+             int newState, int flags, int userId) {
+         if (!sUserManager.exists(userId)) return;
++        // Don't allow to enable components marked for disabling at build-time
++        if (mDisabledComponentsList.contains(componentName)) {
++            Slog.d(TAG, "Ignoring attempt to set enabled state of disabled component "
++                    + componentName.flattenToString());
++            return;
++        }
+         setEnabledSetting(componentName.getPackageName(),
+                 componentName.getClassName(), newState, flags, userId, null);
+     }
+@@ -12143,6 +12183,7 @@ public class PackageManagerService extends IPackageManager.Stub {
+             throw new IllegalArgumentException("Invalid new component state: "
+                     + newState);
+         }
++
+         PackageSetting pkgSetting;
+         final int uid = Binder.getCallingUid();
+         final int permission = mContext.checkCallingOrSelfPermission(
+-- 
+2.5.0
+

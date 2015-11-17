@@ -1,0 +1,181 @@
+From 0d8e6e746d88a9ea1a8d72310e980eac67a5edb6 Mon Sep 17 00:00:00 2001
+From: ksrt12 <kazakov12stepan2012@live.ru>
+Date: Tue, 17 Nov 2015 15:28:14 +0600
+Subject: [PATCH 2/2] Don't store metadata in video buffers
+
+---
+ ...ght-Enable-meta-mode-for-7x27a-video-enco.patch | 109 +++++++++++++++++++++
+ media/libstagefright/ACodec.cpp                    |   4 +
+ media/libstagefright/Android.mk                    |   1 +
+ media/libstagefright/CameraSource.cpp              |   2 +
+ 4 files changed, 116 insertions(+)
+ create mode 100644 0001-libstagefright-Enable-meta-mode-for-7x27a-video-enco.patch
+
+diff --git a/0001-libstagefright-Enable-meta-mode-for-7x27a-video-enco.patch b/0001-libstagefright-Enable-meta-mode-for-7x27a-video-enco.patch
+new file mode 100644
+index 0000000..71e9ee5
+--- /dev/null
++++ b/0001-libstagefright-Enable-meta-mode-for-7x27a-video-enco.patch
+@@ -0,0 +1,109 @@
++From 605774fd51d271749be3fb9ebb12d7bc516e82bf Mon Sep 17 00:00:00 2001
++From: ksrt12 <kazakov12stepan2012@live.ru>
++Date: Tue, 17 Nov 2015 15:23:16 +0600
++Subject: [PATCH] libstagefright: Enable meta mode for 7x27a video encoder
++
++---
++ include/media/stagefright/MediaCodecSource.h        | 3 +++
++ media/libmediaplayerservice/Android.mk              | 4 ++++
++ media/libmediaplayerservice/StagefrightRecorder.cpp | 7 +++++++
++ media/libstagefright/Android.mk                     | 4 ++++
++ media/libstagefright/MediaCodecSource.cpp           | 6 ++++++
++ 5 files changed, 24 insertions(+)
++
++diff --git a/include/media/stagefright/MediaCodecSource.h b/include/media/stagefright/MediaCodecSource.h
++index 0970b2b..f104eeb 100644
++--- a/include/media/stagefright/MediaCodecSource.h
+++++ b/include/media/stagefright/MediaCodecSource.h
++@@ -34,6 +34,9 @@ struct MediaCodecSource : public MediaSource,
++     enum FlagBits {
++         FLAG_USE_SURFACE_INPUT      = 1,
++         FLAG_USE_METADATA_INPUT     = 2,
+++#ifdef USE_SUBMIT_ONE_INPUT_BUFFER			
+++        FLAG_USE_SUBMIT_ONE_INPUT_BUFFER = 3,
+++#endif	
++     };
++ 
++     static sp<MediaCodecSource> Create(
++diff --git a/media/libmediaplayerservice/Android.mk b/media/libmediaplayerservice/Android.mk
++index 2cf5710..9d96305 100644
++--- a/media/libmediaplayerservice/Android.mk
+++++ b/media/libmediaplayerservice/Android.mk
++@@ -57,6 +57,10 @@ LOCAL_C_INCLUDES :=                                                 \
++ 
++ LOCAL_MODULE:= libmediaplayerservice
++ 
+++ifeq ($(TARGET_BOARD_PLATFORM),msm7x27a)
+++    LOCAL_CFLAGS += -DUSE_SUBMIT_ONE_INPUT_BUFFER
+++endif
+++
++ LOCAL_32_BIT_ONLY := true
++ 
++ include $(BUILD_SHARED_LIBRARY)
++diff --git a/media/libmediaplayerservice/StagefrightRecorder.cpp b/media/libmediaplayerservice/StagefrightRecorder.cpp
++index 3d093fa..f87d60f 100644
++--- a/media/libmediaplayerservice/StagefrightRecorder.cpp
+++++ b/media/libmediaplayerservice/StagefrightRecorder.cpp
++@@ -1164,6 +1164,9 @@ void StagefrightRecorder::clipVideoFrameWidth() {
++ 
++ status_t StagefrightRecorder::checkVideoEncoderCapabilities(
++         bool *supportsCameraSourceMetaDataMode) {
+++#ifdef USE_SUBMIT_ONE_INPUT_BUFFER
+++    *supportsCameraSourceMetaDataMode = true;
+++#else	
++     /* hardware codecs must support camera source meta data mode */
++     Vector<CodecCapabilities> codecs;
++     OMXClient client;
++@@ -1176,6 +1179,7 @@ status_t StagefrightRecorder::checkVideoEncoderCapabilities(
++              mVideoEncoder == VIDEO_ENCODER_H264 ? MEDIA_MIMETYPE_VIDEO_AVC : ""),
++             false /* decoder */, true /* hwCodec */, &codecs);
++     *supportsCameraSourceMetaDataMode = codecs.size() > 0;
+++#endif
++     ALOGV("encoder %s camera source meta-data mode",
++             *supportsCameraSourceMetaDataMode ? "supports" : "DOES NOT SUPPORT");
++ 
++@@ -1524,6 +1528,9 @@ status_t StagefrightRecorder::setupVideoEncoder(
++     uint32_t flags = 0;
++     if (mIsMetaDataStoredInVideoBuffers) {
++         flags |= MediaCodecSource::FLAG_USE_METADATA_INPUT;
+++#ifdef USE_SUBMIT_ONE_INPUT_BUFFER
+++        flags |= MediaCodecSource::FLAG_USE_SUBMIT_ONE_INPUT_BUFFER;
+++#endif	
++     }
++ 
++     if (cameraSource == NULL) {
++diff --git a/media/libstagefright/Android.mk b/media/libstagefright/Android.mk
++index 193f8a7..8f99170 100644
++--- a/media/libstagefright/Android.mk
+++++ b/media/libstagefright/Android.mk
++@@ -120,6 +120,10 @@ LOCAL_SHARED_LIBRARIES += \
++ 
++ LOCAL_CFLAGS += -Wno-multichar
++ 
+++ifeq ($(TARGET_BOARD_PLATFORM),msm7x27a)
+++    LOCAL_CFLAGS += -DUSE_SUBMIT_ONE_INPUT_BUFFER
+++endif
+++
++ LOCAL_MODULE:= libstagefright
++ 
++ LOCAL_MODULE_TAGS := optional
++diff --git a/media/libstagefright/MediaCodecSource.cpp b/media/libstagefright/MediaCodecSource.cpp
++index c26e909..b17a8a1 100644
++--- a/media/libstagefright/MediaCodecSource.cpp
+++++ b/media/libstagefright/MediaCodecSource.cpp
++@@ -383,6 +383,12 @@ status_t MediaCodecSource::initEncoder() {
++         mOutputFormat->setInt32("store-metadata-in-buffers", 1);
++     }
++ 
+++#ifdef USE_SUBMIT_ONE_INPUT_BUFFER	
+++	if (mFlags & FLAG_USE_SUBMIT_ONE_INPUT_BUFFER) {
+++        mOutputFormat->setInt32("Only-Submit-One-Input-Buffer-At-One-Time", 1);
+++    }
+++#endif
+++
++     if (mFlags & FLAG_USE_SURFACE_INPUT) {
++         mOutputFormat->setInt32("create-input-buffers-suspended", 1);
++     }
++-- 
++2.5.0
++
+diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
+index 85e98f1..0629ba2 100644
+--- a/media/libstagefright/ACodec.cpp
++++ b/media/libstagefright/ACodec.cpp
+@@ -529,11 +529,15 @@ status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
+ 
+     status_t err;
+     if (mNativeWindow != NULL && portIndex == kPortIndexOutput) {
++#ifdef NO_METADATA_IN_VIDEO_BUFFERS
++        err = allocateOutputBuffersFromNativeWindow();
++#else
+         if (mStoreMetaDataInOutputBuffers) {
+             err = allocateOutputMetaDataBuffers();
+         } else {
+             err = allocateOutputBuffersFromNativeWindow();
+         }
++#endif
+     } else {
+         OMX_PARAM_PORTDEFINITIONTYPE def;
+         InitOMXParams(&def);
+diff --git a/media/libstagefright/Android.mk b/media/libstagefright/Android.mk
+index 8f99170..6060dc4 100644
+--- a/media/libstagefright/Android.mk
++++ b/media/libstagefright/Android.mk
+@@ -122,6 +122,7 @@ LOCAL_CFLAGS += -Wno-multichar
+ 
+ ifeq ($(TARGET_BOARD_PLATFORM),msm7x27a)
+     LOCAL_CFLAGS += -DUSE_SUBMIT_ONE_INPUT_BUFFER
++    LOCAL_CFLAGS += -DNO_METADATA_IN_VIDEO_BUFFERS
+ endif
+ 
+ LOCAL_MODULE:= libstagefright
+diff --git a/media/libstagefright/CameraSource.cpp b/media/libstagefright/CameraSource.cpp
+index c3a940a..e247069 100644
+--- a/media/libstagefright/CameraSource.cpp
++++ b/media/libstagefright/CameraSource.cpp
+@@ -554,11 +554,13 @@ status_t CameraSource::initWithCameraAccess(
+     // By default, do not store metadata in video buffers
+     mIsMetaDataStoredInVideoBuffers = false;
+     mCamera->storeMetaDataInBuffers(false);
++#ifndef NO_METADATA_IN_VIDEO_BUFFERS
+     if (storeMetaDataInVideoBuffers) {
+         if (OK == mCamera->storeMetaDataInBuffers(true)) {
+             mIsMetaDataStoredInVideoBuffers = true;
+         }
+     }
++#endif
+ 
+     int64_t glitchDurationUs = (1000000LL / mVideoFrameRate);
+     if (glitchDurationUs > mGlitchDurationThresholdUs) {
+-- 
+2.5.0
+

@@ -1,0 +1,147 @@
+From 93a5be61065813a3e32f6f59da54c33e91f3c723 Mon Sep 17 00:00:00 2001
+From: ksrt12 <kazakov12stepan2012@live.ru>
+Date: Tue, 17 Nov 2015 15:50:19 +0600
+Subject: [PATCH] vold switchable pair
+
+---
+ res/values/strings.xml                          |  7 ++++
+ res/xml/device_info_memory.xml                  |  6 +++
+ src/com/android/settings/deviceinfo/Memory.java | 54 ++++++++++++++++++++++++-
+ 3 files changed, 66 insertions(+), 1 deletion(-)
+
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index c17d2cb..785ab0e 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -6052,4 +6052,11 @@
+    <string name="imei_information_summary">IMEI relative information</string>
+    <string name="slot_number">(Slot<xliff:g id="slot_num">%1$d</xliff:g>)</string>
+ 
++    <!-- Vold Switchable Pair -->
++    <string name="storage_switch_title">Use external SD as primary</string>
++    <string name="storage_switch_summary_off">Using expanded internal storage for apps and media</string>
++    <string name="storage_switch_summary_on">Using SD Card for apps and media</string>
++    <string name="reboot_prompt_title">Reboot required</string>
++    <string name="reboot_prompt_message">In order to apply the changed configuration, a reboot is required.\n\nDo you want to reboot now?</string>
++
+ </resources>
+diff --git a/res/xml/device_info_memory.xml b/res/xml/device_info_memory.xml
+index 38cc94a..980a399 100644
+--- a/res/xml/device_info_memory.xml
++++ b/res/xml/device_info_memory.xml
+@@ -19,6 +19,12 @@
+         android:title="@string/storage_settings"
+         settings:keywords="@string/keywords_storage">
+ 
++    <SwitchPreference
++        android:key="key_switch_storage"
++        android:title="@string/storage_switch_title"
++        android:summaryOn="@string/storage_switch_summary_on"
++        android:summaryOff="@string/storage_switch_summary_off" />
++
+ <!-- Preference categories are dynamically created based on the list of available storage volumes -->
+ 
+ </PreferenceScreen>
+diff --git a/src/com/android/settings/deviceinfo/Memory.java b/src/com/android/settings/deviceinfo/Memory.java
+index 1958f38..766be50 100644
+--- a/src/com/android/settings/deviceinfo/Memory.java
++++ b/src/com/android/settings/deviceinfo/Memory.java
+@@ -32,8 +32,10 @@ import android.hardware.usb.UsbManager;
+ import android.os.Bundle;
+ import android.os.Environment;
+ import android.os.IBinder;
++import android.os.PowerManager;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
++import android.os.SystemProperties;
+ import android.os.UserManager;
+ import android.os.storage.IMountService;
+ import android.os.storage.StorageEventListener;
+@@ -41,6 +43,8 @@ import android.os.storage.StorageManager;
+ import android.os.storage.StorageVolume;
+ import android.preference.Preference;
+ import android.preference.PreferenceScreen;
++import android.preference.SwitchPreference;
++import android.text.TextUtils;
+ import android.util.Log;
+ import android.view.Menu;
+ import android.view.MenuInflater;
+@@ -83,6 +87,10 @@ public class Memory extends SettingsPreferenceFragment implements Indexable {
+     private UsbManager mUsbManager;
+ 
+     private ArrayList<StorageVolumePreferenceCategory> mCategories = Lists.newArrayList();
++    private static final String KEY_SWITCH_STORAGE = "key_switch_storage";
++    private static final String VOLD_SWITCH_PERSIST_PROP = "persist.sys.vold.switchexternal";
++    private static final String VOLD_SWITCHABLEPAIR_PROP = "persist.sys.vold.switchablepair";
++    private SwitchPreference mSwitchStoragePref;
+ 
+     @Override
+     public void onCreate(Bundle icicle) {
+@@ -97,6 +105,27 @@ public class Memory extends SettingsPreferenceFragment implements Indexable {
+ 
+         addPreferencesFromResource(R.xml.device_info_memory);
+ 
++        String voldswitch = SystemProperties.get(VOLD_SWITCH_PERSIST_PROP, "0");
++        mSwitchStoragePref = (SwitchPreference) findPreference(KEY_SWITCH_STORAGE);
++        mSwitchStoragePref.setChecked("1".equals(voldswitch));
++        if (!Environment.isExternalStorageEmulated()) {
++            Log.i(TAG, "Checking to see if vold switch is possible on this device.");
++            String PRIMARY_STORAGE = System.getenv("EXTERNAL_STORAGE");
++            String SECONDARY_STORAGE = System.getenv("SECONDARY_STORAGE");
++            if (!TextUtils.isEmpty(PRIMARY_STORAGE) && !TextUtils.isEmpty(SECONDARY_STORAGE)) {
++                SystemProperties.set(VOLD_SWITCHABLEPAIR_PROP, PRIMARY_STORAGE + ',' +
++                        SECONDARY_STORAGE);
++                Log.i(TAG, "Setting persist.sys.vold.switchablepair=" + PRIMARY_STORAGE + ',' +
++                        SECONDARY_STORAGE);
++            } else {
++                Log.i(TAG, "Vold switch not possible on this device.");
++            }
++        }
++
++        if (SystemProperties.get(VOLD_SWITCHABLEPAIR_PROP).equals("")) {
++            removePreference(KEY_SWITCH_STORAGE);
++        }
++
+         addCategory(StorageVolumePreferenceCategory.buildForInternal(context));
+ 
+         final StorageVolume[] storageVolumes = mStorageManager.getVolumeList();
+@@ -216,7 +245,13 @@ public class Memory extends SettingsPreferenceFragment implements Indexable {
+ 
+     @Override
+     public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
+-        if (StorageVolumePreferenceCategory.KEY_CACHE.equals(preference.getKey())) {
++        if(preference == mSwitchStoragePref) {
++            Log.d(TAG,"Setting persist.sys.vold.switchexternal to "+(
++                    mSwitchStoragePref.isChecked() ? "1" : "0"));
++            SystemProperties.set(VOLD_SWITCH_PERSIST_PROP,
++                    mSwitchStoragePref.isChecked() ? "1" : "0");
++            showRebootPrompt();
++        } else if (StorageVolumePreferenceCategory.KEY_CACHE.equals(preference.getKey())) {
+             ConfirmClearCacheFragment.show(this);
+             return true;
+         }
+@@ -500,4 +535,21 @@ public class Memory extends SettingsPreferenceFragment implements Indexable {
+             }
+         };
+ 
++    private void showRebootPrompt() {
++        AlertDialog dialog = new AlertDialog.Builder(getActivity())
++                .setTitle(R.string.reboot_prompt_title)
++                .setMessage(R.string.reboot_prompt_message)
++                .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
++                    @Override
++                    public void onClick(DialogInterface dialog, int which) {
++                        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
++                        pm.reboot(null);
++                    }
++                })
++                .setNegativeButton(R.string.no, null)
++                .create();
++
++        dialog.show();
++    }
++
+ }
+-- 
+2.5.0
+

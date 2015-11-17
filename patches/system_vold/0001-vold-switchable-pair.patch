@@ -1,0 +1,91 @@
+From 618083df024b85b9c98ecd83a860db0bc8bb67a2 Mon Sep 17 00:00:00 2001
+From: ksrt12 <kazakov12stepan2012@live.ru>
+Date: Tue, 17 Nov 2015 15:59:53 +0600
+Subject: [PATCH] vold switchable pair
+
+---
+ DirectVolume.cpp | 38 ++++++++++++++++++++++++++++++++++++++
+ DirectVolume.h   |  4 ++--
+ 2 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/DirectVolume.cpp b/DirectVolume.cpp
+index cfa1e0b..18402fd 100644
+--- a/DirectVolume.cpp
++++ b/DirectVolume.cpp
+@@ -25,6 +25,7 @@
+ #define LOG_TAG "DirectVolume"
+ 
+ #include <cutils/log.h>
++#include <cutils/properties.h>
+ #include <sysutils/NetlinkEvent.h>
+ 
+ #include "DirectVolume.h"
+@@ -72,6 +73,7 @@ bool PathInfo::match(const char *path)
+ 
+ DirectVolume::DirectVolume(VolumeManager *vm, const fstab_rec* rec, int flags) :
+         Volume(vm, rec, flags) {
++    char switchable[PROPERTY_VALUE_MAX];
+     mPaths = new PathCollection();
+     for (int i = 0; i < MAX_PARTITIONS; i++)
+         mPartMinors[i] = -1;
+@@ -93,6 +95,42 @@ DirectVolume::DirectVolume(VolumeManager *vm, const fstab_rec* rec, int flags) :
+     snprintf(mount, PATH_MAX, "%s/%s", Volume::FUSE_DIR, rec->label);
+     mFuseMountpoint = strdup(mount);
+ 
++    property_get("persist.sys.vold.switchexternal", switchable, "0");
++    if (!strcmp(switchable,"1")) {
++        char *first, *second = NULL;
++        char label[PATH_MAX];
++        const char *delim = ",";
++        int lblidx = strlen(Volume::FUSE_DIR) + 1;
++        bool swap = true;
++
++        property_get("persist.sys.vold.switchablepair", switchable, "");
++
++        if (!(first = strtok(switchable, delim))) {
++            SLOGE("Mount switch requested, but no switchable mountpoints found");
++            swap = false;
++        } else if (!(second = strtok(NULL, delim))) {
++            SLOGE("Mount switch requested, but bad switchable mountpoints found");
++            swap = false;
++        }
++
++        if (swap) {
++            free(mMountpoint);
++            free(mFuseMountpoint);
++
++            if (!strcmp(mount,first)) {
++                mFuseMountpoint = strdup(second);
++                strcpy(label, second+lblidx);
++                snprintf(second, PATH_MAX, "%s/%s", Volume::MEDIA_DIR, label);
++                mMountpoint = strdup(second);
++            } else if (!strcmp(mount,second)) {
++                mFuseMountpoint = strdup(first);
++                strcpy(label, first+lblidx);
++                snprintf(first, PATH_MAX, "%s/%s", Volume::MEDIA_DIR, label);
++                mMountpoint = strdup(first);
++            }
++        }
++    }
++
+     setState(Volume::State_NoMedia);
+ }
+ 
+diff --git a/DirectVolume.h b/DirectVolume.h
+index 5e0df74..d097750 100644
+--- a/DirectVolume.h
++++ b/DirectVolume.h
+@@ -39,8 +39,8 @@ class DirectVolume : public Volume {
+ public:
+     static const int MAX_PARTITIONS = 32;
+ protected:
+-    const char* mMountpoint;
+-    const char* mFuseMountpoint;
++    char* mMountpoint;
++    char* mFuseMountpoint;
+ 
+     PathCollection *mPaths;
+     int            mDiskMajor;
+-- 
+2.5.0
+

@@ -1,0 +1,79 @@
+From 7709cf2db253652f2d28eed0e0935fdf17d2908d Mon Sep 17 00:00:00 2001
+From: ksrt12 <kazakov12stepan2012@live.ru>
+Date: Tue, 17 Nov 2015 15:56:26 +0600
+Subject: [PATCH] Add path for wifi firmware
+
+---
+ init/devices.c  | 12 +++++++++---
+ rootdir/init.rc |  7 +++++++
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/init/devices.c b/init/devices.c
+index 73fe223..e3cfca7 100644
+--- a/init/devices.c
++++ b/init/devices.c
+@@ -53,7 +53,8 @@
+ #define SYSFS_PREFIX    "/sys"
+ #define FIRMWARE_DIR1   "/etc/firmware"
+ #define FIRMWARE_DIR2   "/vendor/firmware"
+-#define FIRMWARE_DIR3   "/firmware/image"
++#define FIRMWARE_DIR3   "/system/wifi"
++#define FIRMWARE_DIR4   "/data/misc/wifi"
+ 
+ extern struct selabel_handle *sehandle;
+ 
+@@ -840,7 +841,7 @@ static int is_booting(void)
+ 
+ static void process_firmware_event(struct uevent *uevent)
+ {
+-    char *root, *loading, *data, *file1 = NULL, *file2 = NULL, *file3 = NULL;
++    char *root, *loading, *data, *file1 = NULL, *file2 = NULL, *file3 = NULL, *file4 = NULL;
+     int l, loading_fd, data_fd, fw_fd;
+     int booting = is_booting();
+ 
+@@ -871,6 +872,10 @@ static void process_firmware_event(struct uevent *uevent)
+     if (l == -1)
+         goto data_free_out;
+ 
++    l = asprintf(&file4, FIRMWARE_DIR4"/%s", uevent->firmware);
++    if (l == -1)
++        goto data_free_out;
++
+     loading_fd = open(loading, O_WRONLY);
+     if(loading_fd < 0)
+         goto file_free_out;
+@@ -884,7 +889,7 @@ try_loading_again:
+     if(fw_fd < 0) {
+         fw_fd = open(file2, O_RDONLY);
+         if (fw_fd < 0) {
+-            fw_fd = open(file3, O_RDONLY);
++            fw_fd = open(file4, O_RDONLY);
+             if (fw_fd < 0) {
+                 if (booting) {
+                         /* If we're not fully booted, we may be missing
+@@ -915,6 +920,7 @@ file_free_out:
+     free(file1);
+     free(file2);
+     free(file3);
++    free(file4);
+ data_free_out:
+     free(data);
+ loading_free_out:
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index cbcb842..d70997e 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -633,3 +633,10 @@ service pre-recovery /system/bin/uncrypt
+     class main
+     disabled
+     oneshot
++
++service sysinit /system/bin/sh /system/bin/sysinit
++    class main
++    user root
++    oneshot
++
++start sysinit
+-- 
+2.5.0
+
