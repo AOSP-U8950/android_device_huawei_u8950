@@ -37,7 +37,13 @@ BOARD_HAVE_BLUETOOTH_BCM := true
 BOARD_RIL_CLASS := ../../../device/huawei/u8950/ril/
 
 # Kernel
-TARGET_PREBUILT_KERNEL := device/huawei/u8950/kernel
+BOARD_KERNEL_BASE := 0x00200000
+BOARD_KERNEL_CMDLINE := androidboot.hardware=huawei androidboot.selinux=permissive
+BOARD_PAGE_SIZE := 2048
+BOARD_MKBOOTIMG_ARGS := --ramdisk_offset 0x01800000
+TARGET_KERNEL_SOURCE := kernel/huawei/huawei-kernel-3.4
+TARGET_KERNEL_CONFIG := u8950_defconfig
+TARGET_KERNEL_CUSTOM_TOOLCHAIN := linaro-4.9-15.05/bin/arm-linux-gnueabihf-
 
 # Partitions
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 1073741824 # 0x40000000
