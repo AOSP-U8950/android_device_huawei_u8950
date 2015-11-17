@@ -30,14 +30,6 @@ PRODUCT_COPY_FILES += \
 	$(LOCAL_PATH)/configs/thermald.conf:system/etc/thermald.conf \
 	$(LOCAL_PATH)/configs/nvram_4330.txt:system/etc/nvram_4330.txt
 
-ifeq ($(BUILD_FOR_TWRP),true)
-PRODUCT_COPY_FILES += \
-	$(LOCAL_PATH)/twrp/recovery/sbin/charge_recovery:/recovery/root/sbin/charge_recovery \
-	$(LOCAL_PATH)/twrp/recovery/sbin/rmt_storage_recovery:/recovery/root/sbin/rmt_storage_recovery \
-	$(LOCAL_PATH)/twrp/recovery/sbin/rmt_oeminfo_recovery:/recovery/root/sbin/rmt_oeminfo_recovery \
-	$(LOCAL_PATH)/twrp/recovery/sbin/linker:/recovery/root/sbin/linker \
-	$(LOCAL_PATH)/twrp/recovery/sbin/charge.sh:/recovery/root/sbin/charge.sh
-endif
 MOD_PATH := $(LOCAL_PATH)/prebuilt/modules
 LIB_PATH := system/lib/modules
 PRODUCT_COPY_FILES += \
@@ -94,7 +86,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Packages
 PRODUCT_PACKAGES += \
-	SlimLPUpdater \
 	RootExplorer
 
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full.mk)
