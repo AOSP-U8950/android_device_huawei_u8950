@@ -1,7 +1,7 @@
-From 1386d0ef09f37ef2787dedd7bb4d386a5e6a7ca6 Mon Sep 17 00:00:00 2001
+From 0f9c6cfe9f88be0465195b9a604923e116063e57 Mon Sep 17 00:00:00 2001
 From: ksrt12 <kazakov12stepan2012@live.ru>
 Date: Tue, 17 Nov 2015 17:45:35 +0600
-Subject: [PATCH] enable colors
+Subject: [PATCH 1/5] enable colors
 
 ---
  core/Makefile             | 18 ++++++++++---

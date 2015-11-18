@@ -1,7 +1,7 @@
 From fd9efb5ece373e7376926927c6bdf936decc9d54 Mon Sep 17 00:00:00 2001
 From: ksrt12 <kazakov12stepan2012@live.ru>
 Date: Wed, 18 Nov 2015 00:11:08 +0600
-Subject: [PATCH] add kernel mk
+Subject: [PATCH 3/5] add kernel mk
 
 ---
  core/tasks/kernel.mk | 297 +++++++++++++++++++++++++++++++++++++++++++++++++++
