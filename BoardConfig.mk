@@ -20,6 +20,8 @@
 # Inherit from the common msm7x27a definitions
 -include device/huawei/msm7x27a-common/BoardConfigCommon.mk
 
+-include prebuilts/chromium/$(TARGET_DEVICE)/chromium_prebuilt.mk
+
 TARGET_CPU_SMP := true
 
 TARGET_BOOTLOADER_BOARD_NAME := u8950
