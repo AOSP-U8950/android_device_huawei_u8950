@@ -1,0 +1,54 @@
+From f3da174530ae1b8abff9d5f82729b52551e5043d Mon Sep 17 00:00:00 2001
+From: ksrt12 <kazakov12stepan2012@live.ru>
+Date: Thu, 19 Nov 2015 00:13:25 +0600
+Subject: [PATCH] I am)
+
+---
+ res/values-ru/strings.xml        | 1 +
+ res/values/strings.xml           | 4 ++++
+ res/xml/device_info_settings.xml | 8 ++++++++
+ 3 files changed, 13 insertions(+)
+
+diff --git a/res/values-ru/strings.xml b/res/values-ru/strings.xml
+index 24d6188..4719cf3 100644
+--- a/res/values-ru/strings.xml
++++ b/res/values-ru/strings.xml
+@@ -2513,4 +2513,5 @@
+     <string name="imei_information_title" msgid="8499085421609752290">"Данные IMEI-кода"</string>
+     <string name="imei_information_summary" msgid="2074095606556565233">"Сведения, касающиеся IMEI-кода"</string>
+     <string name="slot_number" msgid="3762676044904653577">"(разъем <xliff:g id="SLOT_NUM">%1$d</xliff:g>)"</string>
++    <string name="authors_firmware">Автор прошивки</string>
+ </resources>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 785ab0e..0fa6b7f 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -6059,4 +6059,8 @@
+     <string name="reboot_prompt_title">Reboot required</string>
+     <string name="reboot_prompt_message">In order to apply the changed configuration, a reboot is required.\n\nDo you want to reboot now?</string>
+ 
++    <!-- Authors firmware information-->
++    <string name="authors_firmware">Author firmware</string>
++    <string name="authors_firmware_summary">ksrt12</string>
++
+ </resources>
+diff --git a/res/xml/device_info_settings.xml b/res/xml/device_info_settings.xml
+index 6785a50..0c79c1f 100644
+--- a/res/xml/device_info_settings.xml
++++ b/res/xml/device_info_settings.xml
+@@ -146,4 +146,12 @@
+                 android:title="@string/selinux_status"
+                 android:summary="@string/selinux_status_enforcing"/>
+ 
++        <!-- Authors firmware information-->
++        <PreferenceScreen android:key="authors_firmware" 
++                style="?android:preferenceInformationStyle"
++                android:title="@string/authors_firmware"
++                android:summary="@string/authors_firmware_summary">
++            <intent android:action="android.intent.action.VIEW" android:data="https://github.com/AOSP-U8950" />
++        </PreferenceScreen>
++
+ </PreferenceScreen>
+-- 
+2.5.0
+

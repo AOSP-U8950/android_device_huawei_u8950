@@ -1,21 +1,25 @@
-From 0f9c6cfe9f88be0465195b9a604923e116063e57 Mon Sep 17 00:00:00 2001
+From aac15e7e389eca035f31e35dc2b3672476188468 Mon Sep 17 00:00:00 2001
 From: ksrt12 <kazakov12stepan2012@live.ru>
-Date: Tue, 17 Nov 2015 17:45:35 +0600
-Subject: [PATCH 1/5] enable colors
+Date: Thu, 19 Nov 2015 14:10:08 +0600
+Subject: [PATCH 1/4] enable colors
 
 ---
- core/Makefile             | 18 ++++++++++---
- core/base_rules.mk        |  6 ++---
- core/binary.mk            |  4 +--
- core/cleanbuild.mk        |  4 +--
- core/definitions.mk       | 66 +++++++++++++++++++++++------------------------
- core/dynamic_binary.mk    |  8 +++---
- core/host_java_library.mk |  2 +-
- core/java.mk              | 14 +++++-----
- core/java_library.mk      |  6 ++---
- core/notice_files.mk      |  2 +-
- core/prebuilt_internal.mk |  2 +-
- 11 files changed, 72 insertions(+), 60 deletions(-)
+ core/Makefile                   | 18 +++++++++--
+ core/base_rules.mk              |  6 ++--
+ core/binary.mk                  |  4 +--
+ core/cleanbuild.mk              |  4 +--
+ core/definitions.mk             | 66 ++++++++++++++++++++---------------------
+ core/dex_preopt_odex_install.mk |  2 +-
+ core/dpi_specific_apk.mk        |  2 +-
+ core/dynamic_binary.mk          |  8 ++---
+ core/host_java_library.mk       |  2 +-
+ core/java.mk                    | 14 ++++-----
+ core/java_library.mk            |  6 ++--
+ core/notice_files.mk            |  2 +-
+ core/package_internal.mk        |  6 ++--
+ core/prebuilt_internal.mk       |  2 +-
+ core/static_java_library.mk     |  2 +-
+ 15 files changed, 78 insertions(+), 66 deletions(-)
 
 diff --git a/core/Makefile b/core/Makefile
 index 82fbbd8..10cf63f 100644
@@ -423,6 +427,32 @@ index 38aa720..8723a7a 100644
  @mkdir -p $(dir $@)
  $(hide) $(PRIVATE_CUSTOM_TOOL)
  endef
+diff --git a/core/dex_preopt_odex_install.mk b/core/dex_preopt_odex_install.mk
+index cb38261..514849d 100644
+--- a/core/dex_preopt_odex_install.mk
++++ b/core/dex_preopt_odex_install.mk
+@@ -118,7 +118,7 @@ $(built_odex): PRIVATE_DEX_PREOPT_FLAGS := $(LOCAL_DEX_PREOPT_FLAGS)
+ $(installed_odex) : $(dir $(LOCAL_INSTALLED_MODULE))%$(notdir $(word 1,$(installed_odex))) \
+                   : $(dir $(LOCAL_BUILT_MODULE))%$(notdir $(word 1,$(built_odex))) \
+     | $(ACP)
+-	@echo "Install: $@"
++	@echo -e ${CL_CYN}"Install: $@"${CL_RST}
+ 	$(copy-file-to-target)
+ endif
+ 
+diff --git a/core/dpi_specific_apk.mk b/core/dpi_specific_apk.mk
+index 0e8cbdf..598dd57 100644
+--- a/core/dpi_specific_apk.mk
++++ b/core/dpi_specific_apk.mk
+@@ -41,7 +41,7 @@ $(built_dpi_apk) : $(built_dex)
+ $(built_dpi_apk) : $(private_key) $(certificate) $(SIGNAPK_JAR)
+ $(built_dpi_apk) : $(AAPT) | $(ZIPALIGN)
+ $(built_dpi_apk) : $(all_res_assets) $(jni_shared_libraries) $(full_android_manifest)
+-	@echo "target Package: $(PRIVATE_MODULE) ($@)"
++	@echo -e ${CL_MAG}"target Package:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
+ 	$(create-empty-package)
+ 	$(add-assets-to-package)
+ ifneq ($(jni_shared_libraries),)
 diff --git a/core/dynamic_binary.mk b/core/dynamic_binary.mk
 index 08fb176..197fd06 100644
 --- a/core/dynamic_binary.mk
@@ -577,6 +607,37 @@ index e63cd84..1e1d954 100644
  	$(hide) mkdir -p $(dir $@)
  	$(hide) cat $< > $@
  
+diff --git a/core/package_internal.mk b/core/package_internal.mk
+index a6ad354..57f4456 100644
+--- a/core/package_internal.mk
++++ b/core/package_internal.mk
+@@ -229,7 +229,7 @@ $(R_file_stamp): PRIVATE_RESOURCE_PUBLICS_OUTPUT := \
+ 			$(intermediates.COMMON)/public_resources.xml
+ $(R_file_stamp): PRIVATE_PROGUARD_OPTIONS_FILE := $(proguard_options_file)
+ $(R_file_stamp): $(all_res_assets) $(full_android_manifest) $(RenderScript_file_stamp) $(AAPT) | $(ACP)
+-	@echo "target R.java/Manifest.java: $(PRIVATE_MODULE) ($@)"
++	@echo -e ${CL_MAG}"target R.java/Manifest.java:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
+ 	@rm -f $@
+ 	$(create-resource-java-files)
+ 	$(hide) for GENERATED_MANIFEST_FILE in `find $(PRIVATE_SOURCE_INTERMEDIATES_DIR) \
+@@ -380,7 +380,7 @@ else
+ endif
+ endif
+ $(LOCAL_BUILT_MODULE): $(all_res_assets) $(jni_shared_libraries) $(full_android_manifest)
+-	@echo "target Package: $(PRIVATE_MODULE) ($@)"
++	@echo -e ${CL_MAG}"target Package:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
+ 	$(create-empty-package)
+ 	$(add-assets-to-package)
+ ifneq ($(jni_shared_libraries),)
+@@ -451,7 +451,7 @@ $(built_apk_splits) : $(built_module_path)/%.apk : $(LOCAL_BUILT_MODULE)
+ 
+ # Rules to install the splits
+ $(installed_apk_splits) : $(my_module_path)/$(LOCAL_MODULE)_%.apk : $(built_module_path)/package_%.apk | $(ACP)
+-	@echo "Install: $@"
++	@echo -e ${CL_CYN}"Install: $@"${CL_RST}
+ 	$(copy-file-to-new-target)
+ 
+ # Register the additional built and installed files.
 diff --git a/core/prebuilt_internal.mk b/core/prebuilt_internal.mk
 index bc6088f..b9adb62 100644
 --- a/core/prebuilt_internal.mk
@@ -590,6 +651,19 @@ index bc6088f..b9adb62 100644
  	$(copy-file-to-new-target)
  
  # Register the additional built and installed files.
+diff --git a/core/static_java_library.mk b/core/static_java_library.mk
+index 02078e0..b08fb88 100644
+--- a/core/static_java_library.mk
++++ b/core/static_java_library.mk
+@@ -109,7 +109,7 @@ $(R_file_stamp): PRIVATE_MANIFEST_PACKAGE_NAME :=
+ $(R_file_stamp): PRIVATE_MANIFEST_INSTRUMENTATION_FOR :=
+ 
+ $(R_file_stamp) : $(all_resources) $(full_android_manifest) $(AAPT) $(framework_res_package_export_deps)
+-	@echo "target R.java/Manifest.java: $(PRIVATE_MODULE) ($@)"
++	@echo -e ${CL_MAG}"target R.java/Manifest.java:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
+ 	$(create-resource-java-files)
+ 	$(hide) find $(PRIVATE_SOURCE_INTERMEDIATES_DIR) -name R.java | xargs cat > $@
+ 
 -- 
 2.5.0
 

@@ -86,3 +86,7 @@ WIFI_EXT_MODULE_NAME := "cfg80211"
 WIFI_EXT_MODULE_PATH := "/system/lib/modules/${WIFI_EXT_MODULE_NAME}.ko"
 
 BOARD_LEGACY_NL80211_STA_EVENTS := true
+
+# QCOM
+#-include build/core/qcom_target.mk
+#-include build/core/qcom_utils.mk

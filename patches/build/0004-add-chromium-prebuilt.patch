@@ -1,7 +1,7 @@
-From 86634f26a972c479e464f0e11e9a816a7a3b6675 Mon Sep 17 00:00:00 2001
+From 0e4a4972e06c52a96e6ec66a0a0798e77857785e Mon Sep 17 00:00:00 2001
 From: ksrt12 <kazakov12stepan2012@live.ru>
-Date: Wed, 18 Nov 2015 16:51:12 +0600
-Subject: [PATCH 5/5] Add chromium prebuilt
+Date: Thu, 19 Nov 2015 14:26:08 +0600
+Subject: [PATCH 4/4] add chromium prebuilt
 
 ---
  envsetup.sh | 20 ++++++++++++++++++++
